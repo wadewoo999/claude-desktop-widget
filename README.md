@@ -1,4 +1,4 @@
-# Claude Widget
+# Claude Desktop Widget
 
 > 一個輕量的 Windows 桌面小工具，即時顯示你的 Claude.ai 用量進度。
 > A lightweight Windows desktop widget that shows your Claude.ai usage in real time.
