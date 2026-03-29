@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Claude Usage</title>
+<style>
+  /* ── Reset & base ─────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:           rgba(20, 21, 28, 0.92);
+    --bg-bar:       rgba(255,255,255,0.08);
+    --border:       rgba(255,255,255,0.10);
+    --text:         #e2e4ef;
+    --text-dim:     #7c7f9a;
+    --accent:       #6c8cf7;
+    --bar-blue:     #4A9EFF;
+    --bar-orange:   #FF8C00;
+    --bar-red:      #FF4444;
+    --btn-hover:    rgba(255,255,255,0.10);
+    --shadow:       0 8px 32px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.35);
+    --radius:       12px;
+  }
+  [data-theme="light"] {
+    --bg:           rgba(245, 246, 250, 0.96);
+    --bg-bar:       rgba(0,0,0,0.07);
+    --border:       rgba(0,0,0,0.10);
+    --text:         #1a1b2e;
+    --text-dim:     #6b6e87;
+    --accent:       #4a6ef0;
+    --btn-hover:    rgba(0,0,0,0.07);
+    --shadow:       0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.10);
+  }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-size: 12px;
+    color: var(--text);
+    background: transparent;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Widget shell ──────────────────────────────────────── */
+  #app {
+    width: 100%;
+    height: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    padding: 10px 12px 8px;
+    -webkit-app-region: drag;
+    user-select: none;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ── Title bar ─────────────────────────────────────────── */
+  .titlebar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    flex-shrink: 0;
+  }
+  .app-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dim);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .controls {
+    display: flex;
+    gap: 2px;
+    -webkit-app-region: no-drag;
+  }
+  .ctrl-btn {
+    width: 22px;
+    height: 22px;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    transition: background 0.15s, color 0.15s;
+    -webkit-app-region: no-drag;
+  }
+  .ctrl-btn:hover { background: var(--btn-hover); color: var(--text); }
+  .ctrl-btn.active { color: var(--accent); }
+  .ctrl-btn.danger:hover { background: rgba(255,68,68,0.15); color: #FF4444; }
+  .login-btn {
+    height: 20px;
+    padding: 0 8px;
+    border: 1px solid var(--accent);
+    background: transparent;
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 4px;
+    letter-spacing: 0.02em;
+    transition: background 0.15s, color 0.15s;
+    -webkit-app-region: no-drag;
+  }
+  .login-btn:hover { background: var(--accent); color: #fff; }
+
+  /* ── Progress bars area ────────────────────────────────── */
+  .bars-area {
+    flex: 1;
+    display: flex;
+    flex-direction: row;   /* wide: side by side */
+    align-items: stretch;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  /* Tall layout: stack vertically */
+  #app.tall .bars-area {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .bar-row {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    justify-content: center;
+  }
+  .bar-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  .bar-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .bar-right {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .bar-pct {
+    font-size: 12px;
+    font-weight: 700;
+    min-width: 32px;
+    text-align: right;
+    transition: color 0.4s;
+  }
+  .bar-reset {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-align: right;
+  }
+
+  .bar-track {
+    height: 7px;
+    background: var(--bg-bar);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.4s;
+    min-width: 4px;
+  }
+
+  /* ── Footer ────────────────────────────────────────────── */
+  .footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 6px;
+    flex-shrink: 0;
+    -webkit-app-region: no-drag;
+  }
+  .last-updated {
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+  .refresh-btn {
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    transition: background 0.15s, transform 0.3s;
+    -webkit-app-region: no-drag;
+  }
+  .refresh-btn:hover { background: var(--btn-hover); color: var(--text); }
+  .refresh-btn.spinning { animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Error / login overlay ─────────────────────────────── */
+  .overlay {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius);
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    z-index: 10;
+    -webkit-app-region: drag;
+  }
+  .overlay-msg {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: center;
+    padding: 0 20px;
+    line-height: 1.5;
+  }
+  .overlay-btn {
+    padding: 5px 16px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--btn-hover);
+    color: var(--text);
+    font-size: 11px;
+    cursor: pointer;
+    -webkit-app-region: no-drag;
+    transition: background 0.15s;
+  }
+  .overlay-btn:hover { background: rgba(108,140,247,0.2); border-color: var(--accent); color: var(--accent); }
+
+  .hidden { display: none !important; }
+
+  /* Divider: vertical in wide, horizontal in tall */
+  .divider {
+    width: 1px;
+    background: var(--border);
+    opacity: 0.5;
+    flex-shrink: 0;
+    align-self: stretch;
+    margin: 0;
+  }
+  #app.tall .divider {
+    width: auto;
+    height: 1px;
+    margin: 2px 0;
+    align-self: auto;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- ── Main content ────────────────────────────────────── -->
+  <div class="titlebar">
+    <span class="app-name">Claude Usage</span>
+    <div class="controls">
+      <button class="login-btn hidden" id="btn-login" title="Log in to Claude">Log in</button>
+      <button class="ctrl-btn" id="btn-layout" title="Toggle layout">▭</button>
+      <button class="ctrl-btn" id="btn-theme" title="Toggle theme">☀</button>
+      <button class="ctrl-btn active" id="btn-pin" title="Always on top">📌</button>
+      <button class="ctrl-btn" id="btn-min" title="Minimize">—</button>
+      <button class="ctrl-btn danger" id="btn-close" title="Close">✕</button>
+    </div>
+  </div>
+
+  <div class="bars-area">
+    <!-- Current session bar -->
+    <div class="bar-row">
+      <div class="bar-header">
+        <span class="bar-label">Current session</span>
+        <div class="bar-right">
+          <span class="bar-pct" id="session-pct" style="color: var(--bar-blue)">—%</span>
+          <span class="bar-reset" id="session-reset">—</span>
+        </div>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" id="session-fill" style="width:0%; background: var(--bar-blue)"></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Weekly bar -->
+    <div class="bar-row">
+      <div class="bar-header">
+        <span class="bar-label">Weekly · All models</span>
+        <div class="bar-right">
+          <span class="bar-pct" id="weekly-pct" style="color: var(--bar-blue)">—%</span>
+          <span class="bar-reset" id="weekly-reset">—</span>
+        </div>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" id="weekly-fill" style="width:0%; background: var(--bar-blue)"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span class="last-updated" id="last-updated">Loading…</span>
+    <button class="refresh-btn" id="btn-refresh" title="Refresh now">↻</button>
+  </div>
+
+  <!-- ── Auth / error overlay ───────────────────────────── -->
+  <div class="overlay hidden" id="overlay">
+    <div class="overlay-msg" id="overlay-msg">Not logged in to Claude</div>
+    <button class="overlay-btn" id="overlay-action">Log in to Claude</button>
+    <div class="controls" style="-webkit-app-region:no-drag; position:absolute; top:8px; right:8px; display:flex; gap:2px;">
+      <button class="ctrl-btn" id="overlay-theme" title="Toggle theme">☀</button>
+      <button class="ctrl-btn danger" id="overlay-close" title="Close">✕</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── State ────────────────────────────────────────────────
+let theme = 'dark'
+let alwaysOnTop = true
+let isLoggedIn = false
+let isRefreshing = false
+let lastUpdatedAt = null
+
+// ─── DOM refs ─────────────────────────────────────────────
+const el = (id) => document.getElementById(id)
+
+const sessionPct   = el('session-pct')
+const sessionFill  = el('session-fill')
+const sessionReset = el('session-reset')
+const weeklyPct    = el('weekly-pct')
+const weeklyFill   = el('weekly-fill')
+const weeklyReset  = el('weekly-reset')
+const lastUpdated  = el('last-updated')
+const overlay      = el('overlay')
+const overlayMsg   = el('overlay-msg')
+const overlayAction = el('overlay-action')
+const btnTheme     = el('btn-theme')
+const btnPin       = el('btn-pin')
+const btnRefresh   = el('btn-refresh')
+const btnLogin     = el('btn-login')
+
+// ─── Helpers ──────────────────────────────────────────────
+function barColor(pct) {
+  if (pct >= 90) return 'var(--bar-red)'
+  if (pct >= 75) return 'var(--bar-orange)'
+  return 'var(--bar-blue)'
+}
+
+function updateBar(fillEl, pctEl, pct) {
+  const p = Math.min(100, Math.max(0, pct ?? 0))
+  const color = barColor(p)
+  fillEl.style.width = p + '%'
+  fillEl.style.background = color
+  pctEl.textContent = (pct == null ? '—' : p) + '%'
+  pctEl.style.color = pct == null ? 'var(--text-dim)' : color
+}
+
+function formatCountdown(isoStr) {
+  if (!isoStr) return '—'
+  const target = new Date(isoStr)
+  const now = new Date()
+  let diffMs = target - now
+  if (diffMs <= 0) return 'Resetting now…'
+
+  const totalSecs = Math.floor(diffMs / 1000)
+  const days  = Math.floor(totalSecs / 86400)
+  const hours = Math.floor((totalSecs % 86400) / 3600)
+  const mins  = Math.floor((totalSecs % 3600) / 60)
+
+  if (days > 0) return `Resets in ${days}d ${hours}h`
+  if (hours > 0) return `Resets in ${hours}h ${mins}m`
+  return `Resets in ${mins}m`
+}
+
+function timeAgo(ts) {
+  if (!ts) return 'never'
+  const diffSec = Math.floor((Date.now() - ts) / 1000)
+  if (diffSec < 10) return 'just now'
+  if (diffSec < 60) return `${diffSec}s ago`
+  const diffMin = Math.floor(diffSec / 60)
+  if (diffMin < 60) return `${diffMin}m ago`
+  return `${Math.floor(diffMin/60)}h ago`
+}
+
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', theme)
+  btnTheme.textContent = theme === 'dark' ? '☀' : '🌙'
+  const ot = el('overlay-theme')
+  if (ot) ot.textContent = theme === 'dark' ? '☀' : '🌙'
+}
+
+function applyPinState() {
+  btnPin.classList.toggle('active', alwaysOnTop)
+}
+
+function showOverlay(msg, btnLabel = 'Log in to Claude', showBtn = true) {
+  overlayMsg.textContent = msg
+  overlayAction.textContent = btnLabel
+  overlayAction.classList.toggle('hidden', !showBtn)
+  overlay.classList.remove('hidden')
+  btnLogin.classList.remove('hidden')
+}
+function hideOverlay() {
+  overlay.classList.add('hidden')
+  btnLogin.classList.add('hidden')
+}
+
+// Start a live countdown ticker for reset times
+let countdownTimer = null
+let _fiveHourResetsAt = null
+let _sevenDayResetsAt = null
+
+function startCountdownTicker() {
+  if (countdownTimer) clearInterval(countdownTimer)
+  countdownTimer = setInterval(() => {
+    if (_fiveHourResetsAt) sessionReset.textContent = formatCountdown(_fiveHourResetsAt)
+    if (_sevenDayResetsAt) weeklyReset.textContent  = formatCountdown(_sevenDayResetsAt)
+    if (lastUpdatedAt) lastUpdated.textContent = 'Last updated: ' + timeAgo(lastUpdatedAt)
+  }, 10_000)
+}
+
+// ─── Data handler ─────────────────────────────────────────
+function applyData(data) {
+  hideOverlay()
+  lastUpdatedAt = Date.now()
+  lastUpdated.textContent = 'Last updated: just now'
+
+  const fiveH  = data.five_hour
+  const sevenD = data.seven_day
+
+  _fiveHourResetsAt = fiveH?.resets_at ?? null
+  _sevenDayResetsAt = sevenD?.resets_at ?? null
+
+  updateBar(sessionFill, sessionPct, fiveH?.utilization ?? null)
+  updateBar(weeklyFill,  weeklyPct,  sevenD?.utilization ?? null)
+
+  sessionReset.textContent = formatCountdown(_fiveHourResetsAt)
+  weeklyReset.textContent  = formatCountdown(_sevenDayResetsAt)
+
+  startCountdownTicker()
+
+  btnRefresh.classList.remove('spinning')
+  isRefreshing = false
+}
+
+
+// ─── Button handlers ──────────────────────────────────────
+btnTheme.addEventListener('click', () => {
+  theme = theme === 'dark' ? 'light' : 'dark'
+  applyTheme()
+  window.widget.setTheme(theme)
+})
+el('overlay-theme').addEventListener('click', () => {
+  theme = theme === 'dark' ? 'light' : 'dark'
+  applyTheme()
+  window.widget.setTheme(theme)
+})
+
+btnPin.addEventListener('click', () => {
+  alwaysOnTop = !alwaysOnTop
+  applyPinState()
+  window.widget.setAlwaysOnTop(alwaysOnTop)
+})
+
+btnRefresh.addEventListener('click', () => {
+  if (isRefreshing) return
+  isRefreshing = true
+  btnRefresh.classList.add('spinning')
+  window.widget.refresh()
+  // Safety: remove spinner after 8s if no response
+  setTimeout(() => {
+    btnRefresh.classList.remove('spinning')
+    isRefreshing = false
+  }, 8000)
+})
+
+el('btn-min').addEventListener('click', () => window.widget.minimizeWindow())
+el('btn-close').addEventListener('click', () => window.widget.closeWindow())
+el('overlay-close').addEventListener('click', () => window.widget.closeWindow())
+
+overlayAction.addEventListener('click', () => {
+  window.widget.openLogin()
+})
+
+btnLogin.addEventListener('click', () => {
+  window.widget.openLogin()
+})
+
+// ─── IPC listeners ────────────────────────────────────────
+window.widget.onData((data) => {
+  applyData(data)
+})
+
+window.widget.onError((msg) => {
+  lastUpdated.textContent = '⚠ ' + msg
+  btnRefresh.classList.remove('spinning')
+  isRefreshing = false
+})
+
+window.widget.onAuthState((state) => {
+  if (state === 'logged-out') {
+    showOverlay('Not logged in to Claude', 'Log in to Claude')
+    lastUpdated.textContent = 'Not authenticated'
+  } else if (state === 'logged-in') {
+    hideOverlay()
+    lastUpdated.textContent = 'Loading…'
+  }
+})
+
+// ─── Layout toggle ────────────────────────────────────────
+let currentLayout = 'wide'
+const btnLayout = el('btn-layout')
+
+function applyLayout(layout) {
+  currentLayout = layout
+  document.getElementById('app').classList.toggle('tall', layout === 'tall')
+  btnLayout.textContent = layout === 'wide' ? '▭' : '▬'
+  btnLayout.title = layout === 'wide' ? 'Switch to tall layout' : 'Switch to wide layout'
+}
+
+btnLayout.addEventListener('click', () => {
+  const next = currentLayout === 'wide' ? 'tall' : 'wide'
+  applyLayout(next)
+  window.widget.setLayout(next)
+})
+
+// ─── Boot ─────────────────────────────────────────────────
+async function init() {
+  const settings = await window.widget.getSettings()
+  theme = settings.theme ?? 'dark'
+  alwaysOnTop = settings.alwaysOnTop ?? true
+  applyTheme()
+  applyPinState()
+  applyLayout(settings.layout ?? 'wide')
+}
+
+init()
+</script>
+</body>
+</html>
