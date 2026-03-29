@@ -3,6 +3,7 @@
 > 一個輕量的 Windows 桌面小工具，即時顯示你的 Claude.ai 用量進度。
 > A lightweight Windows desktop widget that shows your Claude.ai usage in real time.
 
+[![Download](https://img.shields.io/github/v/release/wadewoo999/claude-widget?label=Download&logo=github)](https://github.com/wadewoo999/claude-widget/releases/latest)
 ![Electron](https://img.shields.io/badge/Electron-33-47848F?logo=electron)
 ![Platform](https://img.shields.io/badge/Platform-Windows-0078D6?logo=windows)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -41,7 +42,15 @@
 
 ---
 
-## 安裝與執行 / Installation
+## 下載 / Download
+
+> **一鍵使用（不需安裝 Node.js）**
+>
+> 前往 [Releases 頁面](https://github.com/wadewoo999/claude-widget/releases/latest) 下載 `Claude-Widget-v1.0.0-win32-x64.zip`，解壓縮後直接雙擊 `Claude Widget.exe` 即可。
+
+---
+
+## 從原始碼安裝 / Install from source
 
 ### 系統需求 / Requirements
 - Windows 10 / 11
